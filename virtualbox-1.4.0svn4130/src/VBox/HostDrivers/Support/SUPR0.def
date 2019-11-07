@@ -1,0 +1,67 @@
+; $Id: SUPR0.def 4071 2007-08-07 17:07:59Z vboxsync $
+;; @file
+; VirtualBox Support Driver - Built-in exports.
+;
+
+;
+;  Copyright (C) 2006-2007 innotek GmbH
+; 
+;  This file is part of VirtualBox Open Source Edition (OSE), as
+;  available from http://www.virtualbox.org. This file is free software;
+;  you can redistribute it and/or modify it under the terms of the GNU
+;  General Public License as published by the Free Software Foundation,
+;  in version 2 as it comes in the "COPYING" file of the VirtualBox OSE
+;  distribution. VirtualBox OSE is distributed in the hope that it will
+;  be useful, but WITHOUT ANY WARRANTY of any kind.
+
+LIBRARY SUPR0.dll
+
+EXPORTS
+    SUPR0ObjRegister
+    SUPR0ObjAddRef
+    SUPR0ObjRelease
+    SUPR0ObjVerifyAccess
+    SUPR0LockMem
+    SUPR0UnlockMem
+    SUPR0ContAlloc
+    SUPR0ContFree
+    SUPR0MemAlloc
+    SUPR0MemGetPhys
+    SUPR0MemFree
+    SUPR0Printf
+    RTMemAlloc
+    RTMemAllocZ
+    RTMemFree
+    ; broken - RTSemMutexCreate
+    ; broken - RTSemMutexRequest
+    ; broken - RTSemMutexRelease
+    ; broken - RTSemMutexDestroy
+    RTSemFastMutexCreate
+    RTSemFastMutexDestroy
+    RTSemFastMutexRequest
+    RTSemFastMutexRelease
+    RTSemEventCreate
+    RTSemEventSignal
+    RTSemEventWait
+    RTSemEventDestroy
+    RTSpinlockCreate
+    RTSpinlockDestroy
+    RTSpinlockAcquire
+    RTSpinlockRelease
+    RTSpinlockAcquireNoInts
+    RTSpinlockReleaseNoInts
+    RTThreadSelf
+    RTThreadSleep
+    RTThreadYield
+    RTLogDefaultInstance
+    RTLogRelDefaultInstance
+    RTLogSetDefaultInstanceThread
+    RTLogLogger
+    RTLogLoggerEx
+    RTLogLoggerExV
+    AssertMsg1
+    AssertMsg2
+
+    ; data
+    g_SUPGlobalInfoPage DATA
+

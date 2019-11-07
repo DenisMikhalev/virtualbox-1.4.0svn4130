@@ -1,0 +1,70 @@
+# $Id: Makefile.kmk 4071 2007-08-07 17:07:59Z vboxsync $
+## @file
+# Sub-Makefile for the SUPLib testcases.
+#
+
+#
+#  Copyright (C) 2006-2007 innotek GmbH
+# 
+#  This file is part of VirtualBox Open Source Edition (OSE), as
+#  available from http://www.virtualbox.org. This file is free software;
+#  you can redistribute it and/or modify it under the terms of the GNU
+#  General Public License as published by the Free Software Foundation,
+#  in version 2 as it comes in the "COPYING" file of the VirtualBox OSE
+#  distribution. VirtualBox OSE is distributed in the hope that it will
+#  be useful, but WITHOUT ANY WARRANTY of any kind.
+
+DEPTH = ../../../../..
+SUB_DEPTH = ../..
+include	$(PATH_KBUILD)/subheader.kmk
+
+PROGRAMS += \
+	SUPInstall \
+	SUPUninstall
+ifdef VBOX_WITH_TESTCASES
+PROGRAMS += \
+	tstPage \
+	tstContiguous \
+	tstInit \
+	tstInt \
+	tstLow \
+	tstPin \
+	tstGIP-2 \
+	tstGetPagingMode
+endif # VBOX_WITH_TESTCASES
+
+SUPInstall_TEMPLATE   = VBOXR3EXE
+SUPInstall_SOURCES    = SUPInstall.cpp
+SUPInstall_LIBS       = $(LIB_RUNTIME)
+
+SUPUninstall_TEMPLATE = VBOXR3EXE
+SUPUninstall_SOURCES  = SUPUninstall.cpp
+SUPUninstall_LIBS     = $(LIB_RUNTIME)
+
+tstInt_TEMPLATE       = VBOXR3EXE
+tstInt_SOURCES        = tstInt.cpp
+tstInt_LIBS           = $(LIB_RUNTIME)
+
+tstContiguous_TEMPLATE= VBOXR3TSTEXE
+tstContiguous_SOURCES = tstContiguous.cpp
+
+tstInit_TEMPLATE      = VBOXR3TSTEXE
+tstInit_SOURCES       = tstInit.cpp
+
+tstLow_TEMPLATE       = VBOXR3TSTEXE
+tstLow_SOURCES        = tstLow.cpp
+
+tstPin_TEMPLATE       = VBOXR3TSTEXE
+tstPin_SOURCES        = tstPin.cpp
+
+tstPage_TEMPLATE      = VBOXR3TSTEXE
+tstPage_SOURCES       = tstPage.cpp
+
+tstGIP-2_TEMPLATE     = VBOXR3TSTEXE
+tstGIP-2_SOURCES      = tstGIP-2.cpp
+
+tstGetPagingMode_TEMPLATE = VBOXR3TSTEXE
+tstGetPagingMode_SOURCES = tstGetPagingMode.cpp
+
+include	$(PATH_KBUILD)/subfooter.kmk
+

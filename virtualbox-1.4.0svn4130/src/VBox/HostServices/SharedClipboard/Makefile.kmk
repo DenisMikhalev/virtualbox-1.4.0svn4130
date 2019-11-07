@@ -1,0 +1,55 @@
+# $Id: Makefile.kmk 4071 2007-08-07 17:07:59Z vboxsync $
+## @file
+# Sub-Makefile for the Shared Clipboard Host Service.
+#
+
+#
+#  Copyright (C) 2006-2007 innotek GmbH
+# 
+#  This file is part of VirtualBox Open Source Edition (OSE), as
+#  available from http://www.virtualbox.org. This file is free software;
+#  you can redistribute it and/or modify it under the terms of the GNU
+#  General Public License as published by the Free Software Foundation,
+#  in version 2 as it comes in the "COPYING" file of the VirtualBox OSE
+#  distribution. VirtualBox OSE is distributed in the hope that it will
+#  be useful, but WITHOUT ANY WARRANTY of any kind.
+
+DEPTH ?= ../../../..
+SUB_DEPTH = ..
+include $(PATH_KBUILD)/subheader.kmk
+
+#
+# The shared folder service DLL.
+#
+DLLS += VBoxSharedClipboard
+VBoxSharedClipboard_TEMPLATE  = VBOXR3
+VBoxSharedClipboard_DEFS      = VBOX_HGCM
+VBoxSharedClipboard_INCS.win  = \
+	$(VBOX_PATH_SDK)
+
+VBoxSharedClipboard_SOURCES = \
+	service.cpp
+VBoxSharedClipboard_SOURCES.win = \
+	win32.cpp
+ifndef VBOX_HEADLESS
+VBoxSharedClipboard_SOURCES.linux = \
+	linux.cpp
+else
+VBoxSharedClipboard_SOURCES.linux = \
+	linux-stub.cpp
+endif
+
+VBoxSharedClipboard_LIBS = \
+	$(LIB_VMM) \
+	$(LIB_RUNTIME) \
+	$(LIB_REM)
+ifndef VBOX_HEADLESS
+VBoxSharedClipboard_LIBPATH.linux = \
+	$(VBOX_LIBPATH_X11)
+VBoxSharedClipboard_LIBS.linux = \
+	Xt \
+	X11
+endif
+
+include $(PATH_KBUILD)/subfooter.kmk
+

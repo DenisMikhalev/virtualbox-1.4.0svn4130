@@ -1,0 +1,52 @@
+# $Id: Makefile.kmk 4071 2007-08-07 17:07:59Z vboxsync $
+## @file
+# Makefile for VBoxManage (the cli frontend).
+#
+
+#
+#  Copyright (C) 2006-2007 innotek GmbH
+# 
+#  This file is part of VirtualBox Open Source Edition (OSE), as
+#  available from http://www.virtualbox.org. This file is free software;
+#  you can redistribute it and/or modify it under the terms of the GNU
+#  General Public License as published by the Free Software Foundation,
+#  in version 2 as it comes in the "COPYING" file of the VirtualBox OSE
+#  distribution. VirtualBox OSE is distributed in the hope that it will
+#  be useful, but WITHOUT ANY WARRANTY of any kind.
+
+
+DEPTH = ../../../..
+include $(PATH_KBUILD)/header.kmk
+
+PROGRAMS = VBoxManage
+
+VBoxManage_TEMPLATE   = VBOXMAINCLIENTEXE
+VBoxManage_SOURCES    = \
+	VBoxManage.cpp \
+	VBoxInternalManage.cpp
+ifndef VBOX_OSE
+VBoxManage_SOURCES   += \
+	VBoxInternalManageVmdk.cpp
+endif
+ifdef VBOX_WITH_VRDP
+ VBoxManage_DEFS     += VBOX_VRDP
+endif
+ifdef VBOX_WITH_ALSA
+ VBoxManage_DEFS     += VBOX_WITH_ALSA
+endif
+ifeq ($(BUILD_TARGET),win)
+ VBoxManage_LIBS     += \
+	$(PATH_LIB)/VBoxDDU$(VBOX_SUFF_LIB) \
+	$(PATH_LIB)/VBoxXML$(VBOX_SUFF_LIB)
+else
+ VBoxManage_LIBS     += \
+	$(PATH_BIN)/VBoxDDU$(VBOX_SUFF_DLL) \
+	$(PATH_BIN)/VBoxXML$(VBOX_SUFF_DLL)
+endif
+# VBoxManage.cpp uses VBOX_SVN_REV.
+VBoxManage.cpp_DEFS = VBOX_SVN_REV=$(VBOX_SVN_REV)
+VBoxManage.cpp_DEPS = $(VBOX_SVN_REV_KMK)
+
+
+include $(PATH_KBUILD)/footer.kmk
+

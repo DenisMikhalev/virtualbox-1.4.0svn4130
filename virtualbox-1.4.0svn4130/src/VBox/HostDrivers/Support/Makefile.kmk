@@ -1,0 +1,258 @@
+# $Id: Makefile.kmk 4071 2007-08-07 17:07:59Z vboxsync $
+## @file
+# Sub-Makefile for the support library and the drivers/modules/kexts it uses.
+#
+
+#
+#  Copyright (C) 2006-2007 innotek GmbH
+# 
+#  This file is part of VirtualBox Open Source Edition (OSE), as
+#  available from http://www.virtualbox.org. This file is free software;
+#  you can redistribute it and/or modify it under the terms of the GNU
+#  General Public License as published by the Free Software Foundation,
+#  in version 2 as it comes in the "COPYING" file of the VirtualBox OSE
+#  distribution. VirtualBox OSE is distributed in the hope that it will
+#  be useful, but WITHOUT ANY WARRANTY of any kind.
+
+DEPTH ?= ../../../..
+SUB_DEPTH = ..
+include	$(PATH_KBUILD)/subheader.kmk
+
+#
+# Targets
+#
+LIBRARIES += SUPR3
+ifneq ($(filter-out darwin,$(BUILD_TARGET)),)
+LIBRARIES += SUPR0
+endif
+ifdef VBOX_WITH_VBOXDRV
+SYSMODS.darwin  += VBoxDrv
+SYSMODS.freebsd += vboxdrv
+SYSMODS.linux   += vboxdrv
+SYSMODS.win     += VBoxDrv
+SYSMODS.os2     += VBoxDrv
+SYSMODS.solaris += vboxdrv
+endif
+
+INSTALLS.linux = vboxmod-bin vboxmod-sh
+
+#
+# Include sub-makefile(s).
+#
+include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+#
+# Populate FILES_VBOXDRV_NOBIN and FILES_VBOXDRV_BIN
+#
+include $(PATH_SUB_CURRENT)/linux/files_vboxdrv
+
+vboxmod-bin_INST    = bin/src/
+vboxmod-bin_MODE    = a+r,u+w
+vboxmod-bin_SOURCES = $(subst ",,$(FILES_VBOXDRV_NOBIN)) #"
+
+vboxmod-sh_INST     = bin/src/
+vboxmod-sh_MODE     = a+rx,u+w
+vboxmod-sh_SOURCES  = $(subst ",,$(FILES_VBOXDRV_BIN)) #"
+
+#
+# The Ring-3 Support Library (this is linked into the IPRT dll, VBoxRT).
+#
+ifneq ($(filter l4%,$(BUILD_TARGET) $(BUILD_TARGET_SUB)),)
+# L4 has trouble with -pedantic. It also make trouble when inlining is not enabled.
+SUPR3_TEMPLATE      = VBOXR3NP
+else
+SUPR3_TEMPLATE      = VBOXR3
+endif
+SUPR3_DEFS          = IN_SUP_R3 IN_RT_R3
+SUPR3_INCS         := $(PATH_SUB_CURRENT)
+SUPR3_INCS.l4       = $(L4_INCDIR)
+SUPR3_SOURCES       = \
+	SUPLib.cpp \
+	$(BUILD_TARGET)/SUPLib-$(BUILD_TARGET).cpp
+
+#
+# SUPR0 - The Ring-0 Import / Thunk library.
+#
+SUPR0_TEMPLATE      = VBOXR0
+ifeq ($(VBOX_LDR_FMT),pe)
+SUPR0_SOURCES       += SUPR0.def
+endif
+ifeq ($(VBOX_LDR_FMT),lx)
+SUPR0_SOURCES       += $(PATH_TARGET)/SUPR0.def
+$(PATH_TARGET)/SUPR0.def: $(PATH_SUB_CURRENT)/SUPR0.def | $(call DIRDEP,$(PATH_TARGET))
+	$(SED) -e 's/^[ \t][ \t]*\([gA-Z]\)/    _\1/' -e 's/[ \t]DATA[ \t]*/ /' $< > $@.tmp
+	$(MV) -f $@.tmp $@
+endif
+
+
+#
+# VBoxDrv.sys - The Windows driver.
+#
+ifeq ($(BUILD_TARGET),win)
+VBoxDrv_TEMPLATE      = VBOXR0DRV
+ifdef VBOX_SIGNING_MODE
+ VBoxDrv_NOINST       = true
+endif
+VBoxDrv_DEFS          = IN_RT_R0 IN_SUP_R0
+VBoxDrv_SDKS          = W2K3DDK WINPSDKINCS
+VBoxDrv_INCS         := $(PATH_SUB_CURRENT)
+VBoxDrv_SOURCES       = \
+	win/SUPDrv-win.cpp \
+	win/SUPDrvA-win.asm \
+	SUPDRVShared.c
+VBoxDrv_LDFLAGS.x86   = -Entry:DriverEntry@8
+VBoxDrv_LDFLAGS.amd64 = -Entry:DriverEntry
+VBoxDrv_LIBS          = \
+	$(PATH_SDK_W2K3DDK_LIB)/ntoskrnl.lib \
+	$(PATH_SDK_W2K3DDK_LIB)/hal.lib \
+	$(PATH_LIB)/RuntimeR0Drv$(VBOX_SUFF_LIB)
+
+
+INSTALLS += VBoxDrv-inf
+VBoxDrv-inf_INST = $(INST_BIN)
+VBoxDrv-inf_MODE = a+r,u+w
+VBoxDrv-inf_SOURCES = \
+	$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.inf
+VBoxDrv-inf_CLEAN = $(VBoxDrv-inf_SOURCES)
+VBoxDrv-inf_BLDDIRS = $(PATH_TARGET)/VBoxDrvCat.dir
+
+$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.inf: $(PATH_SUB_CURRENT)/win/VBoxDrv.inf $(MAKEFILE_CURRENT) | $$(call DIRDEP,$$(@D))
+	$(call MSG_GENERATE,VBoxDrv-inf,$@,$<)
+	$(call VBOX_EDIT_INF_FN,$<,$@)
+
+ ifdef VBOX_SIGNING_MODE
+VBoxDrv-inf_SOURCES += \
+	$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.sys \
+	$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.cat
+
+$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.sys: $$(TARGET_VBoxDrv) | $$(call DIRDEP,$$(@D))
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.cat: \
+		$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.inf \
+		$(PATH_TARGET)/VBoxDrvCat.dir/VBoxDrv.cat
+	$(call MSG_TOOL,Inf2Cat,VBoxDrv-inf,$@,$<)
+	$(call VBOX_MAKE_CAT_FN, $(@D),$@)
+ endif # signing
+endif # win
+
+
+#
+# vboxdrv.ko - The Linux Kernel Module (syntax only).
+#
+ifeq ($(BUILD_TARGET),linux)
+vboxdrv_TEMPLATE      = VBOXR0DRV
+vboxdrv_DEFS          = KBUILD_MODNAME=KBUILD_STR\(vboxdrv\) KBUILD_BASENAME=KBUILD_STR\(vboxdrv\) MODULE IN_RT_R0 IN_SUP_R0 CONFIG_VBOXDRV_AS_MISC
+vboxdrv_INCS         := $(PATH_SUB_CURRENT)
+vboxdrv_LIBS          = $(PATH_LIB)/RuntimeR0Drv$(VBOX_SUFF_LIB)
+vboxdrv_LIBS.debug    = $(vboxdrv_LIBS) $(VBOX_GCC_LIBGCC)
+vboxdrv_SOURCES       = \
+	$(BUILD_TARGET)/SUPDrv-$(BUILD_TARGET).c \
+	SUPDRVShared.c
+ifndef VBOX_LINUX_VERSION_2_4
+vboxdrv_SOURCES      += \
+	$(BUILD_TARGET)/SUPDrv-$(BUILD_TARGET).mod.c
+endif
+endif # real linux
+
+
+#
+# VBoxDrv.kext - The Darwin Kernel Extension.
+#
+ifeq ($(BUILD_TARGET),darwin)
+VBoxDrv_TEMPLATE      = VBOXR0DRV
+VBoxDrv_DEFS          = IN_RT_R0 IN_SUP_R0 USE_NEW_OS_INTERFACE
+VBoxDrv_DEFS         += DEBUG_DARWIN_GIP
+VBoxDrv_INCS         := $(PATH_SUB_CURRENT)
+VBoxDrv_LIBS          = $(PATH_LIB)/RuntimeR0Drv$(VBOX_SUFF_LIB)
+VBoxDrv_LDFLAGS       = -v -Wl,-whyload -Wl,-v -Wl,-whatsloaded
+VBoxDrv_INST          = $(INST_VBOXDRV)Contents/MacOS/
+VBoxDrv_SOURCES       = \
+	SUPDRVShared.c \
+	$(BUILD_TARGET)/SUPDrv-$(BUILD_TARGET).cpp
+
+INSTALLS += VBoxDrv.kext
+VBoxDrv.kext_INST     = $(INST_VBOXDRV)Contents/
+VBoxDrv.kext_SOURCES  = \
+	$(PATH_TARGET)/Info.plist
+
+$(PATH_TARGET)/Info.plist: $(PATH_SUB_CURRENT)/darwin/Info.plist $(VBOX_VERSION_MK) | $(call DIRDEP,$(PATH_TARGET))
+	$(call MSG_GENERATE,VBoxDrv,$@,$<)
+	$(xQUIET)$(RM) -f $@
+	$(xQUIET)$(SED) \
+		-e 's/@VBOX_VERSION_STRING@/$(VBOX_VERSION_STRING)/g' \
+		-e 's/@VBOX_VERSION_MAJOR@/$(VBOX_VERSION_MAJOR)/g' \
+		-e 's/@VBOX_VERSION_MINOR@/$(VBOX_VERSION_MINOR)/g' \
+		-e 's/@VBOX_VERSION_BUILD@/$(VBOX_VERSION_BUILD)/g' \
+		$< > $@
+
+INSTALLS += Scripts
+Scripts_INST     = $(INST_DIST)
+Scripts_SOURCES  = \
+	darwin/load.sh
+
+endif # darwin
+
+
+#
+# VBoxDrv.sys - The OS/2 driver.
+#
+ifeq ($(BUILD_TARGET),os2)
+VBoxDrv_TEMPLATE      = VBOXR0DRV
+VBoxDrv_DEFS          = IN_RT_R0 IN_SUP_R0 USE_NEW_OS_INTERFACE
+VBoxDrv_INCS         := $(PATH_SUB_CURRENT)
+#VBoxDrv_LDFLAGS       = -s -t -v
+VBoxDrv_SOURCES       = \
+	os2/SUPDrvA-os2.asm \
+	os2/SUPDrv-os2.def
+VBoxDrv_LIBS          = \
+	$(TARGET_VBoxDrvLib) \
+	$(PATH_LIB)/RuntimeR0Drv$(VBOX_SUFF_LIB) \
+	$(VBOX_GCC_LIBGCC) \
+	end
+
+# temp hack to ensure that SUPDrvA-os2.asm is first in the link.
+LIBRARIES += VBoxDrvLib
+VBoxDrvLib_TEMPLATE   = VBOXR0DRV
+VBoxDrvLib_NOINST     = 1
+VBoxDrvLib_DEFS       = IN_RT_R0 IN_SUP_R0 USE_NEW_OS_INTERFACE
+VBoxDrvLib_INCS      := \
+	$(PATH_SUB_CURRENT) \
+	$(PATH_TARGET) \
+	$(PATH_ROOT)/src/VBox/Runtime/include
+VBoxDrvLib_SOURCES    = \
+	os2/SUPDrv-os2.cpp \
+	SUPDRVShared.c
+endif
+
+
+#
+# vboxdrv.ko - The FreeBSD Kernel Module.
+#
+ifeq ($(BUILD_TARGET),freebsd)
+vboxdrv_TEMPLATE      = VBOXR0DRV
+vboxdrv_DEFS          = IN_RT_R0 IN_SUP_R0 USE_NEW_OS_INTERFACE
+vboxdrv_INCS         := $(PATH_SUB_CURRENT)
+vboxdrv_LIBS          = $(PATH_LIB)/RuntimeR0Drv$(VBOX_SUFF_LIB)
+vboxdrv_SOURCES       = \
+	$(BUILD_TARGET)/SUPDrv-$(BUILD_TARGET).c \
+	SUPDRVShared.c
+endif # freebsd
+
+
+#
+# vboxdrv.o - The Solaris Kernel Module.
+#
+ifeq ($(BUILD_TARGET),solaris)
+vboxdrv_TEMPLATE      = VBOXR0DRV
+vboxdrv_DEFS          = IN_RT_R0 IN_SUP_R0 USE_NEW_OS_INTERFACE
+vboxdrv_INCS         := $(PATH_SUB_CURRENT)
+vboxdrv_LIBS          = $(PATH_LIB)/RuntimeR0Drv$(VBOX_SUFF_LIB)
+vboxdrv_SOURCES       = \
+	$(BUILD_TARGET)/SUPDrv-$(BUILD_TARGET).c
+#	SUPDRVShared.c
+endif # solaris
+
+
+include	$(PATH_KBUILD)/subfooter.kmk
+

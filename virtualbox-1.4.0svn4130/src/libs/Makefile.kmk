@@ -1,0 +1,64 @@
+# $Id: Makefile.kmk 4071 2007-08-07 17:07:59Z vboxsync $
+## @file
+# Top-level makefile for the external libraries.
+#
+
+#
+#  Copyright (C) 2006-2007 innotek GmbH
+# 
+#  This file is part of VirtualBox Open Source Edition (OSE), as
+#  available from http://www.virtualbox.org. This file is free software;
+#  you can redistribute it and/or modify it under the terms of the GNU
+#  General Public License as published by the Free Software Foundation,
+#  in version 2 as it comes in the "COPYING" file of the VirtualBox OSE
+#  distribution. VirtualBox OSE is distributed in the hope that it will
+#  be useful, but WITHOUT ANY WARRANTY of any kind.
+
+DEPTH = ../..
+include $(PATH_KBUILD)/header.kmk
+
+
+subdirs := liblzf-1.51 $(subdirs.$(BUILD_TARGET))
+ifndef VBOX_OSE
+ ifeq ($(SDK_VBOX_ZLIB_INCS),$(PATH_ROOT)/src/libs/zlib-1.2.1)
+  subdirs += zlib-1.2.1 libpng-1.2.8
+ endif
+ ifeq ($(SDK_VBOX_LIBPNG_INCS),$(PATH_ROOT)/src/libs/libpng-1.2.8)
+  subdirs += libpng-1.2.8
+ endif
+endif
+ifdef VBOX_WITH_VRDP
+ ifeq ($(SDK_VBOX_OPENSSL_INCS),$(PATH_ROOT)/src/libs/openssl-0.9.7e/include)
+  subdirs += openssl-0.9.7e
+ endif
+endif
+ifdef VBOX_WITH_MAIN
+ ifdef VBOX_WITH_XPCOM
+  subdirs += xpcom18a4
+ endif
+ # Only build xerces if we don't use an external library.
+ ifeq ($(SDK_VBOX_XERCES_INCS),$(PATH_ROOT)/src/libs/xerces-2.6.0/src)
+  subdirs += xerces-2.6.0
+ endif
+ # Only build xalan if we don't use an external library.
+ ifeq ($(SDK_VBOX_XALAN_INCS),$(PATH_ROOT)/src/libs/xalan-1.10.0)
+  subdirs += xalan-1.10.0
+ endif
+ # FFmpeg for test videos
+ ifdef VBOX_WITH_FFMPEG
+  ifeq ($(BUILD_TARGET),darwin)
+   subdirs += ffmpeg-20060710
+  endif
+ endif
+endif
+
+# optimized walking
+SUBDIRS_BLDPROGS       = $(filter xpcom18a4,$(subdirs))
+SUBDIRS_LIBRARIES      = $(subdirs)
+SUBDIRS_BINARIES       = $(filter xpcom18a4,$(subdirs))
+SUBDIRS_DLLS           = $(filter xpcom18a4 ffmpeg-20060710,$(subdirs))
+SUBDIRS_OTHERS         = $(filter xpcom18a4,$(subdirs))
+SUBDIRS_CLEAN          = $(subdirs)
+SUBDIRS_NOTHING        = $(subdirs)
+
+include $(PATH_KBUILD)/footer.kmk
